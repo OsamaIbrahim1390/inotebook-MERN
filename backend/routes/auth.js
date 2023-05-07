@@ -35,17 +35,57 @@ router.post('/createuser', [
             email: req.body.email
         })
         const data = {
-         user:{
-                id:user.id
-         }
+            user: {
+                id: user.id
+            }
         }
-//sending the auth token using JWT
-        const authtoken= jwt.sign(data, "JWT_SECRET")
+        //sending the auth token using JWT
+        const authtoken = jwt.sign(data, "JWT_SECRET")
         res.json({ authtoken })
 
     } catch (error) {
         console.error(error.message)
-        res.status(500).send("Some error occured");
+        res.status(500).send("Internal server error");
+    }
+})
+
+//login user using POST "/api/auth/login" i.e No Login required
+router.post('/login', [
+    body('email', "Enter a valid email").isEmail(),
+    body('password', "Password must contatin minimum 5 characters").exists(),
+
+], async (req, res) => {
+
+    //If there are errors return bad request and the errors
+    const errors = validationResult(req);
+    
+    if(!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const { email, password } = req.body;
+    try {
+        let user = await User.findOne({ email });
+        //checking if user is present in DB or Not
+        if (!user) {
+            return res.status(400).json({ error: "Try to login with correct credentials!!" })
+        }
+        //comparing the password with the hashed password in db
+        const passwordCompare = await bcrypt.compare(password, user.password)
+        if (!passwordCompare) {
+            return res.status(400).json({ error: "Try to login with correct credentials!!" })
+        }
+        const payload = {
+            user: {
+                id: user.id
+            }
+        }
+        //sending the auth token using JWT
+        const authtoken = jwt.sign(payload, "JWT_SECRET")
+        res.json({ authtoken })
+
+    } catch (error) {
+        console.error(error.message)
+        res.status(500).send("Internal server error");
     }
 })
 
